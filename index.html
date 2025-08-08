@@ -3,212 +3,186 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NPLACE — твой холст</title>
+  <title>NPLACE — холст</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 10px; background: #f0f0f0; }
-    h1 { margin-bottom: 0.2em; }
-    #auth { margin-bottom: 15px; }
-    #login, #logout { padding: 8px 15px; font-size: 14px; cursor: pointer; }
-    #logout { display: none; }
-    #user-info { margin-left: 10px; font-weight: bold; }
-    #nickname-section { margin-bottom: 20px; }
-    #nickname { width: 200px; padding: 6px; font-size: 14px; }
-    #saveNick { padding: 6px 12px; margin-left: 6px; cursor: pointer; }
-    #leaderboard { background: white; padding: 10px; border-radius: 5px; max-width: 300px; }
-    .top-player { padding: 4px 0; border-bottom: 1px solid #ddd; }
-    .top-player:last-child { border-bottom: none; }
-    #canvas-container { position: relative; margin-top: 20px; }
-    canvas { background: white; border: 1px solid #aaa; image-rendering: pixelated; cursor: crosshair; }
-    #scaleControl { margin-top: 10px; }
-    #scaleControl button { margin-right: 5px; cursor: pointer; padding: 5px 10px; }
-    .owner-label { color: green; font-weight: bold; margin-left: 8px; }
+    body { font-family: Arial,sans-serif; background:#f0f0f0; margin:10px; }
+    h1 { margin-bottom:0.2em; }
+    #auth { margin-bottom:15px; }
+    #login,#logout { padding:8px 15px; cursor:pointer; font-size:14px; }
+    #logout { display:none; }
+    #user-info { margin-left:10px; font-weight:bold; }
+    #nickname-section { margin-bottom:20px; }
+    #nickname { width:200px; padding:6px; font-size:14px; }
+    #saveNick { padding:6px 12px; margin-left:6px; cursor:pointer; }
+    #ownerLabel { color:green; font-weight:bold; margin-left:8px; display:none; }
+    #leaderboard { background:#fff; padding:10px; border-radius:5px; max-width:300px; }
+    .top-player { padding:4px 0; border-bottom:1px solid #ddd; }
+    .top-player:last-child { border-bottom:none; }
+    #canvas-container { margin-top:20px; }
+    canvas { background:#fff; border:1px solid #aaa; image-rendering: pixelated; cursor: crosshair; }
+    #scaleControl { margin-top:10px; }
+    #scaleControl button { margin-right:5px; cursor:pointer; padding:5px 10px; }
+    #scaleControl button.active { background:#4caf50; color:#fff; }
   </style>
 </head>
 <body>
   <h1>NPLACE</h1>
-
   <div id="auth">
     <button id="login">Войти через Google</button>
     <button id="logout">Выйти</button>
     <span id="user-info"></span>
   </div>
-
   <div id="nickname-section">
     <label for="nickname">Ник: </label>
     <input type="text" id="nickname" placeholder="Введите ник" />
     <button id="saveNick">Сохранить</button>
-    <span id="ownerLabel" class="owner-label" style="display:none;">👑 Владелец</span>
+    <span id="ownerLabel">👑 Владелец</span>
   </div>
-
   <h2>🏆 Топ игроков</h2>
   <div id="leaderboard">Загрузка...</div>
-
   <div id="canvas-container">
     <canvas id="canvas" width="50" height="50"></canvas>
   </div>
-
   <div id="scaleControl">
-    Масштаб: 
+    Масштаб:
     <button data-scale="1">1x</button>
     <button data-scale="2">2x</button>
     <button data-scale="4">4x</button>
     <button data-scale="8" class="active">8x</button>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCVwOQaTPRrDz3dC98Tyg3ByW0JbyNLMJY",
-      authDomain: "analox-wplase.firebaseapp.com",
-      databaseURL: "https://analox-wplase-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "analox-wplase",
-      storageBucket: "analox-wplase.appspot.com",
-      messagingSenderId: "839969323587",
-      appId: "1:839969323587:web:3c476167862cac9d32b2f6"
-    };
+<script>
+  // --- Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCVwOQaTPRrDz3dC98Tyg3ByW0JbyNLMJY",
+    authDomain: "analox-wplase.firebaseapp.com",
+    databaseURL: "https://analox-wplase-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "analox-wplase",
+    storageBucket: "analox-wplase.appspot.com",
+    messagingSenderId: "839969323587",
+    appId: "1:839969323587:web:3c476167862cac9d32b2f6"
+  };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
+  // --- Инициализация Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
 
-    const loginBtn = document.getElementById('login');
-    const logoutBtn = document.getElementById('logout');
-    const userInfo = document.getElementById('user-info');
-    const nicknameInput = document.getElementById('nickname');
-    const saveNickBtn = document.getElementById('saveNick');
-    const ownerLabel = document.getElementById('ownerLabel');
-    const leaderboardDiv = document.getElementById('leaderboard');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const scaleButtons = document.querySelectorAll('#scaleControl button');
+  // --- DOM
+  const loginBtn = document.getElementById('login');
+  const logoutBtn = document.getElementById('logout');
+  const userInfo = document.getElementById('user-info');
+  const nicknameInput = document.getElementById('nickname');
+  const saveNickBtn = document.getElementById('saveNick');
+  const ownerLabel = document.getElementById('ownerLabel');
+  const leaderboardDiv = document.getElementById('leaderboard');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const scaleButtons = document.querySelectorAll('#scaleControl button');
 
-    const OWNER_UID = "твоя_фиребейс_uid_сюда_вставь"; // Вставь сюда свой uid владельца
+  // --- Настройки
+  const OWNER_UID = "ВСТАВЬ_СВОЙ_UID_СЮДА"; // Вставь сюда UID владельца из Firebase
 
-    let currentUser = null;
-    let currentUID = null;
-    let scale = 8; // начальный масштаб
-    const baseSize = 50;
+  let currentUser = null;
+  let currentUID = null;
+  let scale = 8; // стартовый масштаб
+  const baseSize = 50;
 
-    // Установка масштаба
-    function setScale(newScale) {
-      scale = newScale;
-      canvas.style.width = baseSize * scale + 'px';
-      canvas.style.height = baseSize * scale + 'px';
-      scaleButtons.forEach(btn => btn.classList.remove('active'));
-      document.querySelector(`#scaleControl button[data-scale='${scale}']`).classList.add('active');
-    }
+  // --- Масштаб
+  function setScale(newScale) {
+    scale = newScale;
+    canvas.style.width = baseSize * scale + 'px';
+    canvas.style.height = baseSize * scale + 'px';
+    scaleButtons.forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`#scaleControl button[data-scale='${scale}']`).classList.add('active');
+  }
+  setScale(scale);
 
-    setScale(scale);
+  scaleButtons.forEach(btn => {
+    btn.addEventListener('click', () => setScale(parseInt(btn.dataset.scale)));
+  });
 
-    // Рисуем сетку и пиксели
-    function drawCanvas() {
-      ctx.clearRect(0, 0, baseSize, baseSize);
-      db.ref('pixels').once('value').then(snapshot => {
-        snapshot.forEach(child => {
-          const p = child.val();
-          if (p.x !== undefined && p.y !== undefined && p.color) {
-            ctx.fillStyle = p.color;
-            ctx.fillRect(p.x, p.y, 1, 1);
-          }
-        });
-      }).then(() => {
-        // Сетка
-        ctx.strokeStyle = '#ccc';
-        ctx.lineWidth = 0.1;
-        for (let i = 0; i <= baseSize; i++) {
-          ctx.beginPath();
-          ctx.moveTo(i, 0);
-          ctx.lineTo(i, baseSize);
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.moveTo(0, i);
-          ctx.lineTo(baseSize, i);
-          ctx.stroke();
+  // --- Отрисовка пикселей и сетки
+  function drawCanvas() {
+    ctx.clearRect(0, 0, baseSize, baseSize);
+    db.ref('pixels').once('value').then(snapshot => {
+      snapshot.forEach(child => {
+        const p = child.val();
+        if(p.x !== undefined && p.y !== undefined && p.color) {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, 1, 1);
         }
       });
-    }
+    }).then(() => {
+      // сетка
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 0.1;
+      for(let i=0; i<=baseSize; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i,0);
+        ctx.lineTo(i,baseSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0,i);
+        ctx.lineTo(baseSize,i);
+        ctx.stroke();
+      }
+    });
+  }
 
-    // Сохранение пикселя
-    function savePixel(x, y, color) {
-      if (!currentUID) return;
-      const key = `${x}_${y}`;
-      db.ref('pixels/' + key).set({ x, y, color, uid: currentUID });
-    }
+  // --- Сохраняем пиксель в базе
+  function savePixel(x,y,color) {
+    if(!currentUID) return;
+    const key = `${x}_${y}`;
+    db.ref('pixels/'+key).set({x,y,color,uid:currentUID});
+  }
 
-    // Обработка клика на канвасе
-    canvas.addEventListener('click', e => {
-      if (!currentUser) return alert("Войдите, чтобы рисовать");
+  // --- Обработка клика по канвасу
+  canvas.addEventListener('click', e => {
+    if(!currentUser) return alert("Войдите, чтобы рисовать");
 
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const x = Math.floor((e.clientX - rect.left) * scaleX);
-      const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
 
-      const color = prompt("Введите цвет (например, #f00 или red):", "#ff0000");
-      if (!color) return;
+    const color = prompt("Введите цвет (например, #f00 или red):", "#ff0000");
+    if(!color) return;
 
-      savePixel(x, y, color);
+    savePixel(x,y,color);
+    drawCanvas();
+    updateLeaderboard();
+  });
+
+  // --- Вход и выход
+  loginBtn.onclick = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider);
+  };
+  logoutBtn.onclick = () => auth.signOut();
+
+  auth.onAuthStateChanged(user => {
+    if(user) {
+      currentUser = user;
+      currentUID = user.uid;
+      userInfo.textContent = `👤 ${user.displayName}`;
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = 'inline';
+      ownerLabel.style.display = (currentUID === OWNER_UID) ? 'inline' : 'none';
+
+      db.ref(`users/${currentUID}/nickname`).once('value').then(snap => {
+        nicknameInput.value = snap.exists() ? snap.val() : '';
+      });
+
       drawCanvas();
       updateLeaderboard();
-    });
-
-    // Логин/логаут
-    loginBtn.onclick = () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider);
-    };
-
-    logoutBtn.onclick = () => auth.signOut();
-
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        currentUser = user;
-        currentUID = user.uid;
-        userInfo.textContent = `👤 ${user.displayName}`;
-        loginBtn.style.display = 'none';
-        logoutBtn.style.display = 'inline';
-        ownerLabel.style.display = (currentUID === OWNER_UID) ? 'inline' : 'none';
-
-        db.ref(`users/${currentUID}/nickname`).once('value').then(snap => {
-          nicknameInput.value = snap.exists() ? snap.val() : '';
-        });
-
-        drawCanvas();
-        updateLeaderboard();
-      } else {
-        currentUser = null;
-        currentUID = null;
-        userInfo.textContent = '';
-        loginBtn.style.display = 'inline';
-        logoutBtn.style.display = 'none';
-        nicknameInput.value = '';
-        ownerLabel.style.display = 'none';
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        leaderboardDiv.textContent = 'Войдите, чтобы увидеть топ игроков';
-      }
-    });
-
-    // Сохранение ника
-    saveNickBtn.onclick = () => {
-      if (!currentUID) return alert('Войдите чтобы сохранить ник');
-      const nick = nicknameInput.value.trim();
-      if (nick.length > 0) {
-        db.ref(`users/${currentUID}`).update({ nickname: nick });
-        alert('Ник сохранён!');
-      }
-    };
-
-    // Обновление топа
-    function updateLeaderboard() {
-      db.ref('pixels').once('value').then(snapshot => {
-        const counts = {};
-        snapshot.forEach(child => {
-          const p = child.val();
-          if (p.uid) counts[p.uid] = (counts[p.uid] || 0) + 1;
-        });
-
-        const promises = Object.entries
+    } else {
+      currentUser = null;
+      currentUID = null;
+      userInfo.textContent = '';
+      loginBtn.style.display = 'inline';
+      logoutBtn.style.display = 'none';
