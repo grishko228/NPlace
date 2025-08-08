@@ -1,61 +1,87 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NPLACE — холст</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-  <style>
-    body { font-family: Arial,sans-serif; background:#f0f0f0; margin:10px; }
-    h1 { margin-bottom:0.2em; }
-    #auth { margin-bottom:15px; }
-    #login,#logout { padding:8px 15px; cursor:pointer; font-size:14px; }
-    #logout { display:none; }
-    #user-info { margin-left:10px; font-weight:bold; }
-    #nickname-section { margin-bottom:20px; }
-    #nickname { width:200px; padding:6px; font-size:14px; }
-    #saveNick { padding:6px 12px; margin-left:6px; cursor:pointer; }
-    #ownerLabel { color:green; font-weight:bold; margin-left:8px; display:none; }
-    #leaderboard { background:#fff; padding:10px; border-radius:5px; max-width:300px; }
-    .top-player { padding:4px 0; border-bottom:1px solid #ddd; }
-    .top-player:last-child { border-bottom:none; }
-    #canvas-container { margin-top:20px; }
-    canvas { background:#fff; border:1px solid #aaa; image-rendering: pixelated; cursor: crosshair; }
-    #scaleControl { margin-top:10px; }
-    #scaleControl button { margin-right:5px; cursor:pointer; padding:5px 10px; }
-    #scaleControl button.active { background:#4caf50; color:#fff; }
-  </style>
-</head>
-<body>
-  <h1>NPLACE</h1>
-  <div id="auth">
-    <button id="login">Войти через Google</button>
-    <button id="logout">Выйти</button>
-    <span id="user-info"></span>
-  </div>
-  <div id="nickname-section">
-    <label for="nickname">Ник: </label>
-    <input type="text" id="nickname" placeholder="Введите ник" />
-    <button id="saveNick">Сохранить</button>
-    <span id="ownerLabel">👑 Владелец</span>
-  </div>
+<!DOCTYPE html><html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NPLACE</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        margin: 0;
+        background: #121212;
+        color: #fff;
+        padding: 1rem;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+      }
+      button {
+        background: #1f1f1f;
+        color: white;
+        border: 1px solid #444;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      button:hover {
+        background: #333;
+      }
+      #canvas {
+        border: 1px solid #444;
+        background: #fff;
+        image-rendering: pixelated;
+        display: block;
+        margin: 1rem 0;
+      }
+      #nickname-section input {
+        padding: 0.5rem;
+        border-radius: 4px;
+        border: none;
+        width: 200px;
+        margin-right: 0.5rem;
+      }
+      .panel {
+        background: #1e1e1e;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+      }
+      .leaderboard-entry {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid #333;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>NPLACE</h1>
+      <div>
+        <button id="login">🔐 Войти</button>
+        <button id="logout" style="display: none">🚪 Выйти</button>
+      </div>
+    </header><section id="nickname-section" class="panel" style="display: none">
+  <label for="nickname">Никнейм:</label>
+  <input type="text" id="nickname" placeholder="Ваш ник..." />
+  <button id="saveNick">💾 Сохранить</button>
+  <span id="ownerLabel" style="display: none">👑 Владелец</span>
+</section>
+
+<canvas id="canvas" width="50" height="50"></canvas>
+
+<section class="panel">
   <h2>🏆 Топ игроков</h2>
   <div id="leaderboard">Загрузка...</div>
-  <div id="canvas-container">
-    <canvas id="canvas" width="50" height="50"></canvas>
-  </div>
-  <div id="scaleControl">
-    Масштаб:
-    <button data-scale="1">1x</button>
-    <button data-scale="2">2x</button>
-    <button data-scale="4">4x</button>
-    <button data-scale="8" class="active">8x</button>
-  </div>
+</section>
 
 <script>
-  // --- Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyCVwOQaTPRrDz3dC98Tyg3ByW0JbyNLMJY",
     authDomain: "analox-wplase.firebaseapp.com",
@@ -66,123 +92,106 @@
     appId: "1:839969323587:web:3c476167862cac9d32b2f6"
   };
 
-  // --- Инициализация Firebase
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.database();
 
-  // --- DOM
   const loginBtn = document.getElementById('login');
   const logoutBtn = document.getElementById('logout');
-  const userInfo = document.getElementById('user-info');
+  const nicknameSection = document.getElementById('nickname-section');
   const nicknameInput = document.getElementById('nickname');
   const saveNickBtn = document.getElementById('saveNick');
   const ownerLabel = document.getElementById('ownerLabel');
   const leaderboardDiv = document.getElementById('leaderboard');
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
-  const scaleButtons = document.querySelectorAll('#scaleControl button');
 
-  // --- Настройки
-  const OWNER_UID = "ВСТАВЬ_СВОЙ_UID_СЮДА"; // Вставь сюда UID владельца из Firebase
-
+  const OWNER_UID = "ВСТАВЬ_СВОЙ_UID_СЮДА";
   let currentUser = null;
   let currentUID = null;
-  let scale = 8; // стартовый масштаб
-  const baseSize = 50;
 
-  // --- Масштаб
-  function setScale(newScale) {
-    scale = newScale;
-    canvas.style.width = baseSize * scale + 'px';
-    canvas.style.height = baseSize * scale + 'px';
-    scaleButtons.forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`#scaleControl button[data-scale='${scale}']`).classList.add('active');
-  }
-  setScale(scale);
-
-  scaleButtons.forEach(btn => {
-    btn.addEventListener('click', () => setScale(parseInt(btn.dataset.scale)));
-  });
-
-  // --- Отрисовка пикселей и сетки
-  function drawCanvas() {
-    ctx.clearRect(0, 0, baseSize, baseSize);
+  function drawGrid() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     db.ref('pixels').once('value').then(snapshot => {
       snapshot.forEach(child => {
         const p = child.val();
-        if(p.x !== undefined && p.y !== undefined && p.color) {
-          ctx.fillStyle = p.color;
-          ctx.fillRect(p.x, p.y, 1, 1);
-        }
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 1, 1);
       });
-    }).then(() => {
-      // сетка
-      ctx.strokeStyle = '#ccc';
-      ctx.lineWidth = 0.1;
-      for(let i=0; i<=baseSize; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i,0);
-        ctx.lineTo(i,baseSize);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0,i);
-        ctx.lineTo(baseSize,i);
-        ctx.stroke();
-      }
     });
   }
 
-  // --- Сохраняем пиксель в базе
-  function savePixel(x,y,color) {
-    if(!currentUID) return;
-    const key = `${x}_${y}`;
-    db.ref('pixels/'+key).set({x,y,color,uid:currentUID});
+  function updateLeaderboard() {
+    db.ref('pixels').once('value').then(snapshot => {
+      const counts = {};
+      snapshot.forEach(child => {
+        const { uid } = child.val();
+        counts[uid] = (counts[uid] || 0) + 1;
+      });
+
+      const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+      leaderboardDiv.innerHTML = sorted.map(([uid, count]) => {
+        return `<div class="leaderboard-entry"><span>${uid.slice(0,6)}...</span><span>${count}</span></div>`;
+      }).join('');
+    });
   }
 
-  // --- Обработка клика по канвасу
   canvas.addEventListener('click', e => {
-    if(!currentUser) return alert("Войдите, чтобы рисовать");
+    if (!currentUser) return alert('Войдите сначала');
 
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = Math.floor((e.clientX - rect.left) * scaleX);
-    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
+    const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
+    const color = prompt("Цвет (#hex или red):", "#ff0000");
+    if (!color) return;
 
-    const color = prompt("Введите цвет (например, #f00 или red):", "#ff0000");
-    if(!color) return;
-
-    savePixel(x,y,color);
-    drawCanvas();
+    const key = `${x}_${y}`;
+    db.ref('pixels/' + key).set({ x, y, color, uid: currentUID });
+    drawGrid();
     updateLeaderboard();
   });
 
-  // --- Вход и выход
   loginBtn.onclick = () => {
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider);
   };
+
   logoutBtn.onclick = () => auth.signOut();
 
+  saveNickBtn.onclick = () => {
+    if (!currentUID) return;
+    const nick = nicknameInput.value.trim();
+    db.ref(`users/${currentUID}/nickname`).set(nick);
+  };
+
   auth.onAuthStateChanged(user => {
-    if(user) {
+    if (user) {
       currentUser = user;
       currentUID = user.uid;
-      userInfo.textContent = `👤 ${user.displayName}`;
+
       loginBtn.style.display = 'none';
       logoutBtn.style.display = 'inline';
-      ownerLabel.style.display = (currentUID === OWNER_UID) ? 'inline' : 'none';
+      nicknameSection.style.display = 'block';
+
+      if (currentUID === OWNER_UID) {
+        ownerLabel.style.display = 'inline';
+      }
 
       db.ref(`users/${currentUID}/nickname`).once('value').then(snap => {
-        nicknameInput.value = snap.exists() ? snap.val() : '';
+        if (snap.exists()) nicknameInput.value = snap.val();
       });
 
-      drawCanvas();
+      drawGrid();
       updateLeaderboard();
     } else {
       currentUser = null;
       currentUID = null;
-      userInfo.textContent = '';
       loginBtn.style.display = 'inline';
       logoutBtn.style.display = 'none';
+      nicknameSection.style.display = 'none';
+    }
+  });
+</script>
+
+  </body>
+</html>
